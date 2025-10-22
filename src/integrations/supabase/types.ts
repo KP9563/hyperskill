@@ -139,8 +139,10 @@ export type Database = {
         Row: {
           age: number | null
           created_at: string | null
+          hours_taught: number | null
           id: string
           name: string
+          price_per_session: number | null
           qualification: string
           teaching_field: string
           updated_at: string | null
@@ -152,8 +154,10 @@ export type Database = {
         Insert: {
           age?: number | null
           created_at?: string | null
+          hours_taught?: number | null
           id?: string
           name: string
+          price_per_session?: number | null
           qualification: string
           teaching_field: string
           updated_at?: string | null
@@ -165,8 +169,10 @@ export type Database = {
         Update: {
           age?: number | null
           created_at?: string | null
+          hours_taught?: number | null
           id?: string
           name?: string
+          price_per_session?: number | null
           qualification?: string
           teaching_field?: string
           updated_at?: string | null

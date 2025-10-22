@@ -66,6 +66,10 @@ const LearnerDashboard = () => {
     navigate("/auth");
   };
 
+  const handleFieldClick = (field: Field) => {
+    navigate(`/learner/teachers?fieldId=${field.id}&fieldName=${encodeURIComponent(field.name)}`);
+  };
+
   const filteredCategories = categories.filter((category) => {
     if (!searchQuery) return true;
     const categoryFields = fields.filter((f) => f.category_id === category.id);
@@ -119,7 +123,11 @@ const LearnerDashboard = () => {
           <h3 className="text-xl font-semibold mb-4">Suggested for You</h3>
           <div className="grid md:grid-cols-3 gap-4">
             {fields.slice(0, 3).map((field) => (
-              <Card key={field.id} className="hover:shadow-card transition-shadow">
+              <Card 
+                key={field.id} 
+                className="hover:shadow-card transition-shadow cursor-pointer"
+                onClick={() => handleFieldClick(field)}
+              >
                 <CardHeader>
                   <CardTitle className="text-lg">{field.name}</CardTitle>
                   <CardDescription>{field.description}</CardDescription>
@@ -165,7 +173,11 @@ const LearnerDashboard = () => {
                     <AccordionContent className="pt-4">
                       <div className="grid md:grid-cols-2 gap-3">
                         {categoryFields.map((field) => (
-                          <Card key={field.id} className="hover:bg-muted/50 transition-colors cursor-pointer">
+                          <Card 
+                            key={field.id} 
+                            className="hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => handleFieldClick(field)}
+                          >
                             <CardHeader className="pb-3">
                               <CardTitle className="text-base">{field.name}</CardTitle>
                               <CardDescription className="text-sm">{field.description}</CardDescription>
