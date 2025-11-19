@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { GraduationCap, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+
+// ✅ Import from your singleton Firebase instance
+import { auth, db } from "@/firebase";
+import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
 
 const RoleSelection = () => {
   const navigate = useNavigate();
@@ -12,40 +21,46 @@ const RoleSelection = () => {
 
   const handleRoleSelection = async (role: "teacher" | "learner") => {
     setIsLoading(true);
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const user = auth.currentUser;
+
       if (!user) {
         toast.error("Please login first");
         navigate("/auth");
         return;
       }
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role })
-        .eq("id", user.id);
+      const profileRef = doc(db, "profiles", user.uid);
+      const profileSnap = await getDoc(profileRef);
 
-      if (error) throw error;
+      // ✅ Update or create user profile with selected role
+      if (profileSnap.exists()) {
+        await updateDoc(profileRef, { role });
+      } else {
+        await setDoc(profileRef, {
+          role,
+          email: user.email || "",
+          createdAt: new Date(),
+        });
+      }
 
       if (role === "teacher") {
-        navigate("/teacher/registration");
+        navigate("/teacher-registration");
       } else {
-        // Create learner entry
-        const { error: learnerError } = await supabase
-          .from("learners")
-          .insert({ user_id: user.id });
-
-        if (learnerError && !learnerError.message.includes("duplicate")) {
-          throw learnerError;
+        const learnerRef = doc(db, "learners", user.uid);
+        const learnerSnap = await getDoc(learnerRef);
+        if (!learnerSnap.exists()) {
+          await setDoc(learnerRef, {
+            user_id: user.uid,
+            createdAt: new Date(),
+          });
         }
-
-        navigate("/learner/dashboard");
+        navigate("/learner-dashboard");
       }
 
       toast.success(`Welcome as a ${role}!`);
     } catch (error: any) {
+      console.error(error);
       toast.error(error.message || "Failed to set role");
     } finally {
       setIsLoading(false);
@@ -61,7 +76,11 @@ const RoleSelection = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          <Card className="shadow-elevated hover:shadow-2xl transition-all cursor-pointer group" onClick={() => !isLoading && handleRoleSelection("teacher")}>
+          {/* Teacher Card */}
+          <Card
+            className="shadow-elevated hover:shadow-2xl transition-all cursor-pointer group"
+            onClick={() => !isLoading && handleRoleSelection("teacher")}
+          >
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-gradient-primary rounded-2xl group-hover:scale-110 transition-transform">
@@ -94,7 +113,11 @@ const RoleSelection = () => {
             </CardContent>
           </Card>
 
-          <Card className="shadow-elevated hover:shadow-2xl transition-all cursor-pointer group" onClick={() => !isLoading && handleRoleSelection("learner")}>
+          {/* Learner Card */}
+          <Card
+            className="shadow-elevated hover:shadow-2xl transition-all cursor-pointer group"
+            onClick={() => !isLoading && handleRoleSelection("learner")}
+          >
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-gradient-accent rounded-2xl group-hover:scale-110 transition-transform">

@@ -1,30 +1,35 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import { Routes, Route } from "react-router-dom";
+import Auth from "./pages/Auth";
+import RoleSelection from "./pages/RoleSelection";
+import TeacherDashboard from "./pages/TeacherDashboard";
+import TeacherRegistration from "./pages/TeacherRegistration";
+import LearnerDashboard from "./pages/LearnerDashboard";
+import AdminDashboard from "./pages/AdminDashboard"; // ✅ ADDED
 import NotFound from "./pages/NotFound";
-import AdminLogin from "./pages/AdminLogin";
-import AdminDashboard from "./pages/AdminDashboard";
 
-const queryClient = new QueryClient();
+function App() {
+  return (
+    <Routes>
+      {/* Default route -> Login */}
+      <Route path="/" element={<Auth />} />
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      {/* After login */}
+      <Route path="/role-selection" element={<RoleSelection />} />
+
+      {/* Teacher flow */}
+      <Route path="/teacher-registration" element={<TeacherRegistration />} />
+      <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+
+      {/* Learner flow */}
+      <Route path="/learner-dashboard" element={<LearnerDashboard />} />
+
+      {/* Admin flow */}
+      <Route path="/admin-dashboard" element={<AdminDashboard />} /> {/* ✅ ADDED */}
+
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 export default App;

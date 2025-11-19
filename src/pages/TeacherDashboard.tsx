@@ -1,10 +1,24 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { auth, db } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { signOut, onAuthStateChanged, User } from "firebase/auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, LogOut, CheckCircle, Clock, XCircle } from "lucide-react";
+import {
+  GraduationCap,
+  LogOut,
+  CheckCircle,
+  Clock,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface TeacherData {
@@ -22,35 +36,49 @@ const TeacherDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadTeacherData();
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user: User | null) => {
+        if (!user) {
+          navigate("/auth");
+        } else {
+          await loadTeacherData(user.uid);
+        }
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
-  const loadTeacherData = async () => {
+  // ✅ FIXED: Convert Firestore fields → verification_status for UI
+  const loadTeacherData = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        navigate("/auth");
+      const teacherRef = doc(db, "teachers", userId);
+      const teacherSnap = await getDoc(teacherRef);
+
+      if (!teacherSnap.exists()) {
+        navigate("/teacher/registration");
         return;
       }
 
-      const { data, error } = await supabase
-        .from("teachers")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
+      const data = teacherSnap.data();
 
-      if (error) {
-        if (error.code === "PGRST116") {
-          // No teacher record found
-          navigate("/teacher/registration");
-          return;
-        }
-        throw error;
+      let verification_status = "pending";
+
+      if (data.approved === true) {
+        verification_status = "verified";
+      } else if (data.rejected === true) {
+        verification_status = "rejected";
+      } else {
+        verification_status = "pending";
       }
 
-      setTeacherData(data);
-    } catch (error: any) {
+      setTeacherData({
+        ...data,
+        verification_status,
+      } as TeacherData);
+    } catch (error) {
+      console.error(error);
       toast.error("Failed to load teacher data");
     } finally {
       setIsLoading(false);
@@ -58,8 +86,12 @@ const TeacherDashboard = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      await signOut(auth);
+      navigate("/auth");
+    } catch (error) {
+      toast.error("Logout failed");
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -134,7 +166,8 @@ const TeacherDashboard = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Verification Status</CardTitle>
-                {teacherData && getStatusBadge(teacherData.verification_status)}
+                {teacherData &&
+                  getStatusBadge(teacherData.verification_status)}
               </div>
               <CardDescription>
                 {teacherData?.verification_status === "pending" &&
@@ -151,36 +184,53 @@ const TeacherDashboard = () => {
           <Card className="shadow-card">
             <CardHeader>
               <CardTitle>Your Profile</CardTitle>
-              <CardDescription>Your teaching profile information</CardDescription>
+              <CardDescription>
+                Your teaching profile information
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Name</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    Name
+                  </p>
                   <p className="font-medium">{teacherData?.name}</p>
                 </div>
+
                 {teacherData?.age && (
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Age</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">
+                      Age
+                    </p>
                     <p className="font-medium">{teacherData.age}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Qualification</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  Qualification
+                </p>
                 <p className="font-medium">{teacherData?.qualification}</p>
               </div>
 
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Teaching Field</p>
-                <p className="font-medium">{teacherData?.teaching_field}</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  Teaching Field
+                </p>
+                <p className="font-medium">
+                  {teacherData?.teaching_field}
+                </p>
               </div>
 
               {teacherData?.work_experience && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">Work Experience</p>
-                  <p className="font-medium whitespace-pre-wrap">{teacherData.work_experience}</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    Work Experience
+                  </p>
+                  <p className="font-medium whitespace-pre-wrap">
+                    {teacherData.work_experience}
+                  </p>
                 </div>
               )}
             </CardContent>

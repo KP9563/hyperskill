@@ -1,9 +1,9 @@
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { GraduationCap, BookOpen, Users, Award, Globe, Star } from "lucide-react";
+import { GraduationCap, BookOpen, Users, Globe, Star } from "lucide-react";
 
 const Index = () => {
-
   return (
     <div className="min-h-screen bg-gradient-hero">
       {/* Hero Section */}
@@ -20,20 +20,29 @@ const Index = () => {
           <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
             Making learning easy and accessible for everyone
           </p>
+
+          {/* Navigation Buttons */}
           <div className="flex gap-4 justify-center flex-wrap">
-            <Button 
-              size="lg" 
-              className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6 h-auto shadow-elevated"
-            >
-              Browse Courses
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6 h-auto"
-            >
-              Become a Teacher
-            </Button>
+            {/* ✅ Updated route */}
+            <Link to="/learnerdashboard">
+              <Button
+                size="lg"
+                className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-6 h-auto shadow-elevated"
+              >
+                Browse Courses
+              </Button>
+            </Link>
+
+            {/* ✅ Updated route */}
+            <Link to="/teacherregistration">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-2 border-white text-white hover:bg-white/10 text-lg px-8 py-6 h-auto"
+              >
+                Become a Teacher
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -88,19 +97,24 @@ const Index = () => {
 
         {/* Popular Categories */}
         <div className="mb-20">
-          <h2 className="text-4xl font-bold text-white text-center mb-12">Popular Categories</h2>
+          <h2 className="text-4xl font-bold text-white text-center mb-12">
+            Popular Categories
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-6xl mx-auto">
             {[
-              "Programming", 
-              "Design", 
-              "Business", 
-              "Marketing", 
-              "Photography", 
-              "Music", 
-              "Languages", 
-              "Fitness"
+              "Programming",
+              "Design",
+              "Business",
+              "Marketing",
+              "Photography",
+              "Music",
+              "Languages",
+              "Fitness",
             ].map((category) => (
-              <Card key={category} className="hover:shadow-xl transition-all cursor-pointer group">
+              <Card
+                key={category}
+                className="hover:shadow-xl transition-all cursor-pointer group"
+              >
                 <CardContent className="p-6 text-center">
                   <Star className="w-8 h-8 mx-auto mb-2 text-primary group-hover:scale-110 transition-transform" />
                   <div className="font-semibold text-lg">{category}</div>

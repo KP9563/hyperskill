@@ -1,10 +1,30 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/firebase"; // <-- You’ll create this file (firebase.ts)
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, GraduationCap, Clock, DollarSign, BookOpen } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  ArrowLeft,
+  GraduationCap,
+  Clock,
+  DollarSign,
+  BookOpen,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Teacher {
@@ -15,6 +35,7 @@ interface Teacher {
   price_per_session: number;
   qualification: string;
   verification_status: string;
+  teaching_field: string;
 }
 
 const TeachersList = () => {
@@ -22,14 +43,14 @@ const TeachersList = () => {
   const [searchParams] = useSearchParams();
   const fieldId = searchParams.get("fieldId");
   const fieldName = searchParams.get("fieldName");
-  
+
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!fieldId || !fieldName) {
       toast.error("Invalid field selection");
-      navigate("/learner/dashboard");
+      navigate("/learner-dashboard");
       return;
     }
     loadTeachers();
@@ -37,17 +58,23 @@ const TeachersList = () => {
 
   const loadTeachers = async () => {
     try {
-      const { data, error } = await supabase
-        .from("teachers")
-        .select("*")
-        .eq("teaching_field", fieldName)
-        .eq("verification_status", "approved");
+      const q = query(
+        collection(db, "teachers"),
+        where("teaching_field", "==", fieldName),
+        where("verification_status", "==", "approved")
+      );
 
-      if (error) throw error;
-      setTeachers(data || []);
-    } catch (error: any) {
+      const querySnapshot = await getDocs(q);
+      const teacherList: Teacher[] = [];
+
+      querySnapshot.forEach((doc) => {
+        teacherList.push({ id: doc.id, ...doc.data() } as Teacher);
+      });
+
+      setTeachers(teacherList);
+    } catch (error) {
+      console.error("Error loading teachers:", error);
       toast.error("Failed to load teachers");
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +86,11 @@ const TeachersList = () => {
       <header className="border-b bg-card shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/learner/dashboard")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/learner-dashboard")}
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="p-2 bg-gradient-primary rounded-lg">
@@ -67,7 +98,9 @@ const TeachersList = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold">{fieldName}</h1>
-              <p className="text-sm text-muted-foreground">{teachers.length} teachers available</p>
+              <p className="text-sm text-muted-foreground">
+                {teachers.length} teachers available
+              </p>
             </div>
           </div>
         </div>
@@ -81,7 +114,8 @@ const TeachersList = () => {
             <CardHeader>
               <CardTitle>No Teachers Available</CardTitle>
               <CardDescription>
-                There are currently no verified teachers for this field. Please check back later.
+                There are currently no verified teachers for this field. Please
+                check back later.
               </CardDescription>
             </CardHeader>
           </Card>
@@ -101,7 +135,9 @@ const TeachersList = () => {
                     <TableHead>Qualification</TableHead>
                     <TableHead>Work Experience</TableHead>
                     <TableHead className="text-center">Hours Taught</TableHead>
-                    <TableHead className="text-right">Price per Session</TableHead>
+                    <TableHead className="text-right">
+                      Price per Session
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
