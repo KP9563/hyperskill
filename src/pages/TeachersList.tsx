@@ -1,185 +1,122 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { db } from "@/firebase"; // <-- You’ll create this file (firebase.ts)
-import { collection, query, where, getDocs } from "firebase/firestore";
+// src/pages/TeachersList.tsx
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { auth, db } from "@/firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ArrowLeft,
-  GraduationCap,
-  Clock,
-  DollarSign,
-  BookOpen,
-} from "lucide-react";
+import { Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface Teacher {
   id: string;
-  name: string;
-  work_experience: string;
-  hours_taught: number;
-  price_per_session: number;
-  qualification: string;
-  verification_status: string;
-  teaching_field: string;
+  name?: string;
+  email?: string;
+  teaching_field?: string;
+  qualification?: string;
+  work_experience?: string;
+  approved?: boolean;
+  verification_status?: string;
 }
+
+const useQuery = () => new URLSearchParams(useLocation().search);
 
 const TeachersList = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const fieldId = searchParams.get("fieldId");
-  const fieldName = searchParams.get("fieldName");
+  const q = useQuery();
+  const fieldId = q.get("fieldId") || "";
+  const fieldName = q.get("fieldName") || "";
 
+  const [loading, setLoading] = useState(true);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!fieldId || !fieldName) {
-      toast.error("Invalid field selection");
-      navigate("/learner-dashboard");
+    const loadTeachers = async () => {
+      setLoading(true);
+      try {
+        // Query teachers: only approved ones and matching the field name
+        // We assume teachers have teaching_field as a plain string (e.g., "Web Development")
+        const teachersRef = collection(db, "teachers");
+        const qSnap = query(
+          teachersRef,
+          where("approved", "==", true),
+          where("teaching_field", "==", fieldName)
+        );
+        const snap = await getDocs(qSnap);
+        const data = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as Teacher[];
+        setTeachers(data);
+      } catch (err: any) {
+        console.error("Failed loading teachers:", err);
+        toast.error("Failed to load teachers");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // defensive: only call if fieldName (passed from Learner dashboard) exists
+    if (!fieldName) {
+      setTeachers([]);
+      setLoading(false);
       return;
     }
     loadTeachers();
-  }, [fieldId]);
-
-  const loadTeachers = async () => {
-    try {
-      const q = query(
-        collection(db, "teachers"),
-        where("teaching_field", "==", fieldName),
-        where("verification_status", "==", "approved")
-      );
-
-      const querySnapshot = await getDocs(q);
-      const teacherList: Teacher[] = [];
-
-      querySnapshot.forEach((doc) => {
-        teacherList.push({ id: doc.id, ...doc.data() } as Teacher);
-      });
-
-      setTeachers(teacherList);
-    } catch (error) {
-      console.error("Error loading teachers:", error);
-      toast.error("Failed to load teachers");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [fieldName, fieldId]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/learner-dashboard")}
-            >
-              <ArrowLeft className="w-5 h-5" />
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">
+            Teachers for: <span className="text-primary">{fieldName || "—"}</span>
+          </h2>
+          <div>
+            <Button variant="ghost" onClick={() => navigate("/learner-dashboard")}>
+              Back
             </Button>
-            <div className="p-2 bg-gradient-primary rounded-lg">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{fieldName}</h1>
-              <p className="text-sm text-muted-foreground">
-                {teachers.length} teachers available
-              </p>
-            </div>
           </div>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-8">
-        {isLoading ? (
-          <p className="text-muted-foreground">Loading teachers...</p>
+        {loading ? (
+          <p>Loading teachers...</p>
         ) : teachers.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No Teachers Available</CardTitle>
-              <CardDescription>
-                There are currently no verified teachers for this field. Please
-                check back later.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <p className="text-muted-foreground">
+            No verified teachers found for this skill yet. Try another field.
+          </p>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Available Teachers</CardTitle>
-              <CardDescription>
-                Browse and compare teachers for {fieldName}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Qualification</TableHead>
-                    <TableHead>Work Experience</TableHead>
-                    <TableHead className="text-center">Hours Taught</TableHead>
-                    <TableHead className="text-right">
-                      Price per Session
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {teachers.map((teacher) => (
-                    <TableRow key={teacher.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-white font-semibold">
-                            {teacher.name.charAt(0).toUpperCase()}
-                          </div>
-                          {teacher.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-sm">
-                          <BookOpen className="w-4 h-4 text-muted-foreground" />
-                          {teacher.qualification}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {teacher.work_experience || "Not specified"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1 text-sm">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          {teacher.hours_taught}h
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 text-sm font-semibold">
-                          <DollarSign className="w-4 h-4 text-primary" />
-                          {teacher.price_per_session.toFixed(2)}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <div className="grid md:grid-cols-2 gap-4">
+            {teachers.map((t) => (
+              <Card key={t.id} className="cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{t.name || t.email}</CardTitle>
+                      <div className="text-sm text-muted-foreground">{t.teaching_field}</div>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent>
+                  <p className="text-sm"><strong>Qualification:</strong> {t.qualification || "—"}</p>
+                  <p className="text-sm"><strong>Experience:</strong> {t.work_experience || "—"}</p>
+
+                  <div className="flex gap-3 mt-4">
+                    <Button onClick={() => navigate(`/teacher/${t.id}`)}>View Profile</Button>
+                    <Button
+                      className="bg-gradient-primary text-white"
+                      onClick={() => navigate(`/teacher/${t.id}?book=1`)}
+                    >
+                      Request Session
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };

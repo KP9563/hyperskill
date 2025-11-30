@@ -17,6 +17,31 @@ import {
 import { GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const SUBJECT_LIST = [
+  "Math",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Computer Science",
+  "Web Development",
+  "App Development",
+  "Machine Learning",
+  "Design",
+  "English",
+  "Tamil",
+];
+
+const LANGUAGES = [
+  "English",
+  "Tamil",
+  "Hindi",
+  "Telugu",
+  "Kannada",
+  "Malayalam",
+];
+
 const TeacherRegistration = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +52,37 @@ const TeacherRegistration = () => {
     qualification: "",
     workExperience: "",
     teachingField: "",
+    hourlyRate: "",
+    driveLink: "",
   });
+
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [availability, setAvailability] = useState<{ day: string; time: string }[]>([
+    { day: "", time: "" },
+  ]);
+
+  const toggleSubject = (subject: string) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(subject) ? prev.filter((s) => s !== subject) : [...prev, subject]
+    );
+  };
+
+  const toggleLanguage = (lang: string) => {
+    setSelectedLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
+  };
+
+  const updateAvailability = (index: number, key: "day" | "time", value: string) => {
+    const slots = [...availability];
+    slots[index][key] = value;
+    setAvailability(slots);
+  };
+
+  const addSlot = () => {
+    setAvailability([...availability, { day: "", time: "" }]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,36 +105,26 @@ const TeacherRegistration = () => {
         return;
       }
 
-      // save teacher WITHOUT certificates
       await setDoc(teacherRef, {
         user_id: user.uid,
         email: user.email,
         name: formData.name,
         age: parseInt(formData.age) || null,
-
-        academic_details: {
-          qualification: formData.qualification,
-          highest_degree: formData.qualification,
-          graduation_year: null,
-        },
-
-        experience: {
-          summary: formData.workExperience,
-          years: formData.workExperience ? 1 : 0,
-        },
-
-        teaching_specialization: {
-          main: formData.teachingField,
-          tags: formData.teachingField.split(" "),
-        },
-
-        teaching_field: formData.teachingField,
         qualification: formData.qualification,
         work_experience: formData.workExperience,
+        teaching_field: formData.teachingField,
+
+        subjects: selectedSubjects,
+        languages: selectedLanguages,
+        hourly_rate: formData.hourlyRate ? Number(formData.hourlyRate) : null,
+        drive_link: formData.driveLink,
+
+        availability,
 
         approved: false,
         rejected: false,
         verification_status: "pending",
+        status: "pending_verification",
         created_at: new Date(),
       });
 
@@ -110,7 +155,6 @@ const TeacherRegistration = () => {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-
             {/* Name + Age */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -142,7 +186,7 @@ const TeacherRegistration = () => {
             <div>
               <Label>Qualification *</Label>
               <Input
-                placeholder="e.g., Master's in Computer Science"
+                placeholder="e.g., Master's in CS"
                 value={formData.qualification}
                 onChange={(e) =>
                   setFormData({ ...formData, qualification: e.target.value })
@@ -175,6 +219,108 @@ const TeacherRegistration = () => {
                 }
                 required
               />
+            </div>
+
+            {/* Teaching Languages */}
+            <div>
+              <Label>Teaching Languages *</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {LANGUAGES.map((lang) => (
+                  <button
+                    type="button"
+                    key={lang}
+                    onClick={() => toggleLanguage(lang)}
+                    className={`px-3 py-1 rounded-full border text-sm ${
+                      selectedLanguages.includes(lang)
+                        ? "bg-primary text-white"
+                        : "bg-muted"
+                    }`}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Subjects */}
+            <div>
+              <Label>Subjects You Teach *</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {SUBJECT_LIST.map((sub) => (
+                  <button
+                    type="button"
+                    key={sub}
+                    onClick={() => toggleSubject(sub)}
+                    className={`px-3 py-1 rounded-full border text-sm ${
+                      selectedSubjects.includes(sub)
+                        ? "bg-primary text-white"
+                        : "bg-muted"
+                    }`}
+                  >
+                    {sub}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div>
+              <Label>Hourly Rate (₹)</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 500"
+                value={formData.hourlyRate}
+                onChange={(e) =>
+                  setFormData({ ...formData, hourlyRate: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Drive Link */}
+            <div>
+              <Label>Drive Link for Certificates</Label>
+              <Input
+                placeholder="Paste Google Drive folder link"
+                value={formData.driveLink}
+                onChange={(e) =>
+                  setFormData({ ...formData, driveLink: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Availability */}
+            <div>
+              <Label>Your Available Slots</Label>
+              {availability.map((slot, idx) => (
+                <div key={idx} className="grid grid-cols-2 gap-3 mt-2">
+                  <select
+                    className="border rounded p-2 text-sm"
+                    value={slot.day}
+                    onChange={(e) => updateAvailability(idx, "day", e.target.value)}
+                  >
+                    <option value="">Select Day</option>
+                    {DAYS.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+
+                  <Input
+                    type="time"
+                    value={slot.time}
+                    onChange={(e) => updateAvailability(idx, "time", e.target.value)}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={addSlot}
+                className="text-primary text-sm mt-2 underline"
+              >
+                + Add another slot
+              </button>
             </div>
 
             {/* Note */}
